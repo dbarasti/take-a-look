@@ -1,22 +1,31 @@
 import os
 import re
-from threading import Thread
-from time import sleep
-import logging
+import time
+
 import requests
+import schedule
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.wait import WebDriverWait
 
-# TODO make processes scheduled
-
-web_page_url = "https://www.asos.com/it/asos-design/asos-design-vestito-lungo-plisse-verde-con-stampa-a-fiorellini/prd/13664615?clr=verde-a-fiorellini&colourWayId=16556056&SearchQuery=&cid=13508"
+web_page_url = "https://www.asos.com/it/asos-design/asos-design-risparmia-con-confezione-da-5-paia-di-calzini-sportivi-bianchi/prd/12271458?CTAref=Complete+the+Look+Carousel_2&featureref1=complete+the+look"
 # web_page_url = "https://www.la7.it/registrazioni/registrazioni-propaganda"
 # element = "div"
-element = "span"
+tag = "div"
 attribute = "class"
 # attribute = "class"
-value = "current-price"
+value = "product-hero"
 # value = "data_ora-content"
-regex_pattern = "52"
+regex_pattern = "ESAURITO"
+# regex_pattern = "(0*(?:[1-9][0-9]?|200))"
+
+option = webdriver.ChromeOptions()
+option.add_argument(" — incognito")
+driver = webdriver.Chrome("/usr/bin/chromedriver")
+driver.implicitly_wait(2)  # seconds
+
+
 # regex_pattern = "27-01-2020"
 
 
@@ -30,40 +39,47 @@ def find_iframe_urls(from_url):
     return iframes
 
 
-def scrape_page(url, target_element, target_attr, target_value, pattern):
-    def scrape_url(page_url):
-        def scrape():
-            logger = logging.getLogger("default logger")
-            while True:
-                response = requests.get(page_url)
-                if (400 < response.status_code < 500) or (500 < response.status_code < 600):
-                    logger.error(f"Error ({response.status_code}) while loading {response.request.url}")
-                elif response.status_code == 200:
-                    soup = BeautifulSoup(response.text, "html.parser")
-                    events = soup.findAll(target_element, attrs={target_attr: target_value})
-                    for event in events:
-                        res = re.findall(pattern, str(event))
-                        if len(res) > 0:
-                            matching_found()
-                sleep(10)
+def scrape_page(page_url, pattern):
+    def scrape_url(url):
+        def elaborate_response():
+            for element_text in response:
+                res = re.findall(pattern, str(element_text))
+                if len(res) > 0:
+                    matching_found()
+                else:
+                    print("not found")
+
+        def make_request():
+            driver.get(url)
+            timeout = 10
+            try:
+                WebDriverWait(driver, timeout)
+            except TimeoutException:
+                print("Timed out waiting for page to load")
+                driver.quit()
+            elements = driver.find_elements_by_xpath(f"//{tag}[@{attribute}='{value}']")
+            return [x.text for x in elements]
 
         def matching_found():
             duration = 1  # seconds
             freq = 440  # Hz
-            logging.info(f"Found matching of {pattern} at {page_url}")
+            print(f"Found matching of {pattern} at {url}")
             os.system('play -nq -t alsa synth {} sine {}'.format(duration, freq))
 
-        print(f"Scraping url {page_url}")
-        process_ref = Thread(target=scrape)
-        process_ref.start()
-        return process_ref
-    scrape_url(url)
-    iframes = find_iframe_urls(url)
+        response = make_request()
+        elaborate_response()
+
+    schedule.every(10).seconds.do(scrape_url, page_url)
+    iframes = find_iframe_urls(page_url)
     for iframe in iframes:
-        scrape_url(iframe)
+        schedule.every(10).seconds.do(scrape_url, iframe)
 
 
-scrape_page(web_page_url, element, attribute, value, regex_pattern)
+scrape_page(web_page_url, regex_pattern)
+schedule.run_all()
+while True:
+    schedule.run_pending()
+    time.sleep(1)
 
 '''
 driver = webdriver.Chrome("/usr/bin/chromedriver")
