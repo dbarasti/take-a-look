@@ -7,26 +7,33 @@ import time
 import requests
 import schedule
 from bs4 import BeautifulSoup
+from kuyruk import Kuyruk
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.wait import WebDriverWait
 
-web_page_url = "https://www.asos.com/it/asos-design/asos-design-risparmia-con-confezione-da-5-paia-di-calzini-sportivi-bianchi/prd/12271458?CTAref=Complete+the+Look+Carousel_2&featureref1=complete+the+look"
-# web_page_url = "https://www.la7.it/registrazioni/registrazioni-propaganda"
-# element = "div"
+# web_page_url = "https://www.asos.com/it/asos-design/asos-design-risparmia-con-confezione-da-5-paia-di-calzini-sportivi-bianchi/prd/12271458?CTAref=Complete+the+Look+Carousel_2&featureref1=complete+the+look"
+web_page_url = "https://sqa.stackexchange.com/questions/2609/running-webdriver-without-opening-actual-browser-window"
 tag = "div"
-attribute = "class"
+# tag = "div"
+attribute = "id"
 # attribute = "class"
-value = "product-hero"
-# value = "data_ora-content"
-regex_pattern = "ESAURITO"
+# value = "product-hero"
+value = "answers-header"
+# regex_pattern = "ESAURITO"
 # regex_pattern = "(0*(?:[1-9][0-9]?|200))"
-# regex_pattern = "27-01-2020"
+regex_pattern = "7"
 
-option = webdriver.ChromeOptions()
-option.add_argument(" — incognito")
-driver = webdriver.Chrome("/usr/bin/chromedriver")
-driver.implicitly_wait(2)  # seconds
+
+def setup_driver():
+    option = webdriver.ChromeOptions()
+    option.add_argument("--headless")
+    option.add_argument(" — incognito")
+    option.binary_location = '/usr/bin/google-chrome'
+    wd = webdriver.Chrome(chrome_options=option, executable_path="/usr/bin/chromedriver")
+    # driver = webdriver.Chrome("/usr/bin/chromedriver")
+    wd.implicitly_wait(2)  # seconds
+    return wd
 
 
 def find_iframe_urls(from_url):
@@ -48,6 +55,8 @@ def scrape_page(page_url, pattern):
                     matching_found()
                 else:
                     print("not found")
+            if not response:
+                print("element not found in page")
 
         def make_request():
             driver.get(url)
@@ -60,6 +69,7 @@ def scrape_page(page_url, pattern):
             elements = driver.find_elements_by_xpath(f"//{tag}[@{attribute}='{value}']")
             return [x.text for x in elements]
 
+        @kuyruk.task()
         def matching_found():
             duration = 1  # seconds
             freq = 440  # Hz
@@ -69,12 +79,13 @@ def scrape_page(page_url, pattern):
         response = make_request()
         elaborate_response()
 
-    schedule.every(10).seconds.do(job_queue.put, [scrape_url, page_url])
+    schedule.every(5).seconds.do(job_queue.put, [scrape_url, page_url])
     iframes = find_iframe_urls(page_url)
     for iframe in iframes:
-        schedule.every(10).seconds.do(job_queue.put, [scrape_url, iframe])
+        schedule.every(5).seconds.do(job_queue.put, [scrape_url, iframe])
 
 
+driver = setup_driver()
 job_queue = queue.Queue()
 scrape_page(web_page_url, regex_pattern)
 
@@ -86,6 +97,7 @@ def worker_main():
         job_queue.task_done()
 
 
+kuyruk = Kuyruk()
 worker_thread = threading.Thread(target=worker_main)
 worker_thread.start()
 
