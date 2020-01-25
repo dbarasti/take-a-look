@@ -1,5 +1,7 @@
 import os
+import queue
 import re
+import threading
 import time
 
 import requests
@@ -19,14 +21,12 @@ value = "product-hero"
 # value = "data_ora-content"
 regex_pattern = "ESAURITO"
 # regex_pattern = "(0*(?:[1-9][0-9]?|200))"
+# regex_pattern = "27-01-2020"
 
 option = webdriver.ChromeOptions()
 option.add_argument(" — incognito")
 driver = webdriver.Chrome("/usr/bin/chromedriver")
 driver.implicitly_wait(2)  # seconds
-
-
-# regex_pattern = "27-01-2020"
 
 
 def find_iframe_urls(from_url):
@@ -63,36 +63,32 @@ def scrape_page(page_url, pattern):
         def matching_found():
             duration = 1  # seconds
             freq = 440  # Hz
-            print(f"Found matching of {pattern} at {url}")
+            print(f"Found matching for {pattern} at {url}")
             os.system('play -nq -t alsa synth {} sine {}'.format(duration, freq))
 
         response = make_request()
         elaborate_response()
 
-    schedule.every(10).seconds.do(scrape_url, page_url)
+    schedule.every(10).seconds.do(job_queue.put, [scrape_url, page_url])
     iframes = find_iframe_urls(page_url)
     for iframe in iframes:
-        schedule.every(10).seconds.do(scrape_url, iframe)
+        schedule.every(10).seconds.do(job_queue.put, [scrape_url, iframe])
 
 
+job_queue = queue.Queue()
 scrape_page(web_page_url, regex_pattern)
-schedule.run_all()
-while True:
+
+
+def worker_main():
+    while 1:
+        job_func, job_args = job_queue.get()
+        job_func(job_args)
+        job_queue.task_done()
+
+
+worker_thread = threading.Thread(target=worker_main)
+worker_thread.start()
+
+while 1:
     schedule.run_pending()
     time.sleep(1)
-
-'''
-driver = webdriver.Chrome("/usr/bin/chromedriver")
-# driver.implicitly_wait(2)  # seconds
-driver.get(propaganda_url)
-wait = WebDriverWait(driver, 10)
-element = wait.until(EC.presence_of_element_located((By.ID, 'spazioBannerSubHeader')))
-# myDynamicElement = driver.find_element_by_id("accordion")
-print(element)
-'''
-
-'''
-f = open("output.html", "w")
-f.write(driver.page_source)
-# print(driver.page_source)
-'''
