@@ -19,8 +19,8 @@ logging.basicConfig(level=logging.DEBUG,
 
 @app.task
 def matching_found(url, pattern):
-    duration = 1  # seconds
+    duration = 0.5  # seconds
     freq = 440  # Hz
-    print(f"Found matching for {pattern} at {url}")
+    logger.info(f"{url}")
     os.system('play -nq -t alsa synth {} sine {}'.format(duration, freq))
     bot.send_message(chat_id=channel, text=f"Found matching for {pattern} at {url}")
