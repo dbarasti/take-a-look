@@ -1,6 +1,5 @@
 import logging
 import os
-from time import sleep
 
 import telegram
 from celery import Celery
