@@ -1,4 +1,3 @@
-import os
 import queue
 import re
 import threading
@@ -7,22 +6,22 @@ import time
 import requests
 import schedule
 from bs4 import BeautifulSoup
-from kuyruk import Kuyruk
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.wait import WebDriverWait
+from update_worker import matching_found
 
 # web_page_url = "https://www.asos.com/it/asos-design/asos-design-risparmia-con-confezione-da-5-paia-di-calzini-sportivi-bianchi/prd/12271458?CTAref=Complete+the+Look+Carousel_2&featureref1=complete+the+look"
-web_page_url = "https://sqa.stackexchange.com/questions/2609/running-webdriver-without-opening-actual-browser-window"
-tag = "div"
-# tag = "div"
+web_page_url = "https://www.amazon.it/dp/B07PVCVBN7/ref=gw_mso_comb_qc_tkl_it?pf_rd_p=35d27a20-fa53-42e7-a469-3002b616c2f2&pf_rd_r=T7W1AEHYX8P6SS7Z33MC"
+# tag = "h1"
+tag = "span"
+# attribute = ""
 attribute = "id"
-# attribute = "class"
-# value = "product-hero"
-value = "answers-header"
+value = "priceblock_ourprice"
+# value = "title "
 # regex_pattern = "ESAURITO"
-# regex_pattern = "(0*(?:[1-9][0-9]?|200))"
-regex_pattern = "7"
+regex_pattern = "(0*(?:[1-9][0-9]?|40))"
+#regex_pattern = ""
 
 
 def setup_driver():
@@ -52,7 +51,7 @@ def scrape_page(page_url, pattern):
             for element_text in response:
                 res = re.findall(pattern, str(element_text))
                 if len(res) > 0:
-                    matching_found()
+                    matching_found.delay(url, pattern)
                 else:
                     print("not found")
             if not response:
@@ -69,17 +68,10 @@ def scrape_page(page_url, pattern):
             elements = driver.find_elements_by_xpath(f"//{tag}[@{attribute}='{value}']")
             return [x.text for x in elements]
 
-        @kuyruk.task()
-        def matching_found():
-            duration = 1  # seconds
-            freq = 440  # Hz
-            print(f"Found matching for {pattern} at {url}")
-            os.system('play -nq -t alsa synth {} sine {}'.format(duration, freq))
-
         response = make_request()
         elaborate_response()
 
-    schedule.every(5).seconds.do(job_queue.put, [scrape_url, page_url])
+    schedule.every(10).seconds.do(job_queue.put, [scrape_url, page_url])
     iframes = find_iframe_urls(page_url)
     for iframe in iframes:
         schedule.every(5).seconds.do(job_queue.put, [scrape_url, iframe])
@@ -97,7 +89,6 @@ def worker_main():
         job_queue.task_done()
 
 
-kuyruk = Kuyruk()
 worker_thread = threading.Thread(target=worker_main)
 worker_thread.start()
 
