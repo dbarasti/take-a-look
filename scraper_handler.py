@@ -24,8 +24,8 @@ value_g = "data_ora-content"
 # regex_pattern_g = "([5],\\d\\d\\d|\\d\\d,\\d{3,})"
 regex_pattern_g = "10-04-2020"
 
-info_one = ScrapingInfo(web_page_url_one, tag_g, attribute_g, value_g, regex_pattern_g)
-info_two = ScrapingInfo(web_page_url_two, tag_g, attribute_g, value_g, regex_pattern_g)
+info_one = ScrapingInfo("blabla", web_page_url_one, tag_g, attribute_g, value_g, regex_pattern_g)
+info_two = ScrapingInfo("blabla", web_page_url_two, tag_g, attribute_g, value_g, regex_pattern_g)
 driver_one = setup_driver()
 # driver_two = setup_driver()
 

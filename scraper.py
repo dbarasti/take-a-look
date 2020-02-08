@@ -1,3 +1,4 @@
+import json
 import queue
 import re
 import threading
@@ -38,7 +39,7 @@ class Scraper:
                     res = re.findall(scraping_target.regex_pattern, str(element_text))
                     if len(res) > 0 and (self.results.get(scraping_target.web_page_url) is not True):
                         self.results[scraping_target.web_page_url] = True
-                        matching_found.delay(scraping_target.web_page_url, scraping_target.regex_pattern)
+                        matching_found.delay(scraping_target.chat_id, scraping_target.web_page_url)
                     elif len(res) == 0:
                         print(f"pattern not found in {element_text}")
                 if not response:
@@ -71,7 +72,8 @@ class Scraper:
             iframes = self.find_iframe_urls(info.web_page_url)
             for iframe in iframes:
                 schedule.every(10).seconds.do(self.job_queue.put, [scrape_url,
-                                                                   ScrapingInfo(iframe, info.tag, info.attribute,
+                                                                   ScrapingInfo(info.chat_id, iframe, info.tag,
+                                                                                info.attribute,
                                                                                 info.value, info.regex_pattern)])
         worker_thread = threading.Thread(target=worker_main)
         worker_thread.start()

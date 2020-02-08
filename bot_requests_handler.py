@@ -1,11 +1,16 @@
 import logging
 import os
+from multiprocessing.context import Process
 
 from dotenv import load_dotenv
+from selenium import webdriver
 from telegram import (ReplyKeyboardRemove)
 from telegram.ext import CommandHandler, MessageHandler, Filters
 from telegram.ext import (ConversationHandler)
 from telegram.ext import Updater
+
+from scraper import Scraper
+from scraping_info import ScrapingInfo
 
 load_dotenv()
 token = os.getenv("API_TOKEN")
@@ -19,6 +24,21 @@ logger = logging.getLogger(__name__)
 URL, TAG, ATTRIBUTE, VALUE, REGEX = range(5)
 
 
+def setup_driver():
+    option = webdriver.ChromeOptions()
+    option.add_argument("--headless")
+    option.add_argument(" — incognito")
+    option.binary_location = '/usr/bin/google-chrome'
+    wd = webdriver.Chrome(chrome_options=option, executable_path="/usr/bin/chromedriver")
+    wd.implicitly_wait(2)  # todo check if mandatory to do this
+    return wd
+
+
+def launch_scraper(driver, info: [ScrapingInfo]):
+    scraper = Scraper(driver, info)
+    scraper.run_scraping()
+
+
 def start(update, context):
     update.message.reply_text(
         'Hi! I am ScraperBot. I will help you scrape the world. '
@@ -28,9 +48,34 @@ def start(update, context):
     return URL
 
 
+def start_config(update, context):
+    update.message.reply_text('I am now firing-up your configuration')
+    context.chat_data['driver'] = setup_driver()
+    context.chat_data['scraping-info'] = ScrapingInfo(update.message.chat_id, context.chat_data['url'],
+                                                      context.chat_data['tag'],
+                                                      context.chat_data['attribute'],
+                                                      context.chat_data['value'],
+                                                      context.chat_data['regex'])
+    context.chat_data['process'] = Process(target=launch_scraper,
+                                           args=(context.chat_data['driver'], [context.chat_data['scraping-info']],))
+    context.chat_data['process'].start()
+
+
+def stop_config(update, context):
+    update.message.reply_text('Stopping your configuration')
+    context.chat_data['process'].terminate()
+
+
+def new_config(update, context):
+    update.message.reply_text('Which URL should I scrape for you?')
+
+    return URL
+
+
 def url(update, context):
     user = update.message.from_user
-    logger.info("URL of %s: %s", user.first_name, update.message.text)
+    context.chat_data['url'] = update.message.text
+    logger.info("URL of %s: %s", user.first_name, context.chat_data['url'])
     update.message.reply_text('Nice! Please send the html tag you wish to target')
 
     return TAG
@@ -38,7 +83,8 @@ def url(update, context):
 
 def tag(update, context):
     user = update.message.from_user
-    logger.info("Tag of %s: %s", user.first_name, update.message.text)
+    context.chat_data['tag'] = update.message.text
+    logger.info("Tag of %s: %s", user.first_name, context.chat_data['tag'])
     update.message.reply_text('Gorgeous! Now, send me the attribute')
 
     return ATTRIBUTE
@@ -46,7 +92,8 @@ def tag(update, context):
 
 def attribute(update, context):
     user = update.message.from_user
-    logger.info("Attribute of %s: %s", user.first_name, update.message.text)
+    context.chat_data['attribute'] = update.message.text
+    logger.info("Attribute of %s: %s", user.first_name, context.chat_data['attribute'])
     update.message.reply_text('Almost there. I need the value for the attribute')
 
     return VALUE
@@ -54,7 +101,8 @@ def attribute(update, context):
 
 def value(update, context):
     user = update.message.from_user
-    logger.info("Attribute Value of %s: %s", user.first_name, update.message.text)
+    context.chat_data['value'] = update.message.text
+    logger.info("Attribute Value of %s: %s", user.first_name, context.chat_data['value'])
     update.message.reply_text('Now the REGEX and that\'s it')
 
     return REGEX
@@ -62,9 +110,10 @@ def value(update, context):
 
 def regex(update, context):
     user = update.message.from_user
-    logger.info("Regex of %s: %s", user.first_name, update.message.text)
+    context.chat_data['regex'] = update.message.text
+    logger.info("Regex of %s: %s", user.first_name, context.chat_data['regex'])
     update.message.reply_text('Thank you! Now I am ready to scrape the website. \n'
-                              'Send the \\run command to run the configuration')
+                              'Send the /runconfig command to run the configuration')
 
     return ConversationHandler.END
 
@@ -94,9 +143,13 @@ def main():
 
     # Add conversation handler with the states GENDER, PHOTO, LOCATION and BIO
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('newscraping', start)],
+        entry_points=[CommandHandler('start', start),
+                      CommandHandler('newconfig', new_config),
+                      CommandHandler('runconfig', start_config),
+                      CommandHandler('stopconfig', stop_config)],
 
         states={
+
             URL: [MessageHandler(Filters.text, url)],
 
             TAG: [MessageHandler(Filters.text, tag)],
