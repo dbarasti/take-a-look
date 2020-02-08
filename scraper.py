@@ -3,6 +3,7 @@ import re
 import threading
 import time
 
+import requests
 import schedule
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException
@@ -20,16 +21,11 @@ class Scraper:
         self.job_queue = queue.Queue()
         self.results = {}
 
-    def find_iframe_urls(self, from_url):
+    @staticmethod
+    def find_iframe_urls(from_url):
         iframes = []
-        self.driver.get(from_url)
-        timeout = 10
-        try:
-            WebDriverWait(self.driver, timeout)
-        except TimeoutException:
-            print("Timed out waiting for page to load")
-            self.driver.quit()
-        soup = BeautifulSoup(self.driver.page_source, "html.parser")
+        response = requests.get(from_url)
+        soup = BeautifulSoup(response.text, "html.parser")
         frames = soup.findAll("iframe")
         for frame in frames:
             iframes.append(frame["src"])
@@ -44,8 +40,9 @@ class Scraper:
                         self.results[scraping_target.web_page_url] = True
                         matching_found.delay(scraping_target.web_page_url, scraping_target.regex_pattern)
                     elif len(res) == 0:
-                        self.results[scraping_target.web_page_url] = False
+                        print(f"pattern not found in {element_text}")
                 if not response:
+                    self.results[scraping_target.web_page_url] = False
                     print("element not found in page")
 
             def make_request():
@@ -55,7 +52,7 @@ class Scraper:
                     WebDriverWait(self.driver, timeout)
                 except TimeoutException:
                     print("Timed out waiting for page to load")
-                    self.driver.quit()
+                    # self.driver.quit()
                 elements = self.driver.find_elements_by_xpath(
                     f"//{scraping_target.tag}[@{scraping_target.attribute}='{scraping_target.value}']")
                 return [x.text for x in elements]
@@ -70,14 +67,12 @@ class Scraper:
                 self.job_queue.task_done()
 
         for info in self.scraping_info:
-            schedule.every(5).seconds.do(self.job_queue.put, [scrape_url, info])
-            '''
+            schedule.every(10).seconds.do(self.job_queue.put, [scrape_url, info])
             iframes = self.find_iframe_urls(info.web_page_url)
             for iframe in iframes:
                 schedule.every(10).seconds.do(self.job_queue.put, [scrape_url,
                                                                    ScrapingInfo(iframe, info.tag, info.attribute,
                                                                                 info.value, info.regex_pattern)])
-            '''
         worker_thread = threading.Thread(target=worker_main)
         worker_thread.start()
 
