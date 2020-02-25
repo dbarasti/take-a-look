@@ -2,6 +2,7 @@ requests
 schedule
 bs4
 telegram
+python-telegram-bot
 celery
 python-dotenv
 selenium
