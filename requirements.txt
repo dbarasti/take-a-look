@@ -3,5 +3,5 @@ schedule
 bs4
 telegram
 celery
-dotenv
+python-dotenv
 selenium
