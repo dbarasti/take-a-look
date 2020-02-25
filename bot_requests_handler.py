@@ -14,7 +14,8 @@ from scraping_info import ScrapingInfo
 
 load_dotenv()
 token = os.getenv("API_TOKEN")
-
+chromeDriver = os.getenv("CHROMEDRIVER_PATH")
+chromeBrowser = os.getenv("GOOGLE_CHROME_BIN")
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -28,8 +29,8 @@ def setup_driver():
     option = webdriver.ChromeOptions()
     option.add_argument("--headless")
     option.add_argument(" — incognito")
-    option.binary_location = '/usr/bin/google-chrome'
-    wd = webdriver.Chrome(chrome_options=option, executable_path="/usr/bin/chromedriver")
+    option.binary_location = chromeBrowser
+    wd = webdriver.Chrome(chrome_options=option, executable_path=chromeBrowser)
     wd.implicitly_wait(2)  # todo check if mandatory to do this
     return wd
 
