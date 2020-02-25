@@ -1,3 +1,3 @@
 worker: celery worker --app=update_worker
-web: python bot_requests_handler.py
+run: python bot_requests_handler.py
 
