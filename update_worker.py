@@ -14,7 +14,7 @@ token = os.getenv("API_TOKEN")
 channel = os.getenv("CHANNEL_NAME")
 
 app = Celery('scraper')
-app.conf.update(BROKER_URL=os.getenv("RABBITMQ_URL"))
+app.conf.update(BROKER_URL=os.getenv("CLOUDAMQP_URL"))
 
 bot = telegram.Bot(token=token)
 logging.basicConfig(level=logging.INFO,
