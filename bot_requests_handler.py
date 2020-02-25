@@ -14,8 +14,6 @@ from scraping_info import ScrapingInfo
 
 load_dotenv()
 token = os.getenv("API_TOKEN")
-chromeBrowser = os.getenv("GOOGLE_CHROME_BIN")
-# Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
