@@ -5,7 +5,6 @@ import telegram
 from celery import Celery
 from dotenv import load_dotenv
 
-from scraping_info import ScrapingInfo
 
 load_dotenv()
 logger = logging.getLogger()
