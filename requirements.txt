@@ -6,3 +6,4 @@ python-telegram-bot
 celery
 python-dotenv
 selenium
+pymongo==3.10.1
